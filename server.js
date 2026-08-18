@@ -6,7 +6,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-const TOKEN = process.env.TELEGRAM_TOKEN || "8739380013:AAF4g1U4Lp22fXXkXa3MpZcut7YVhIfQmIU";
+const TOKEN = process.env.TELEGRAM_TOKEN || "8478383950:AAHRk0cBoVd3rFSB6om9etikuVe1GkJD-Ps";
 const ADMIN_ID = process.env.ADMIN_ID || "7968968395";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
