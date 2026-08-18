@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAID ASSASSIN • Report Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a00 100%);
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .neon-text {
+            text-shadow: 0 0 10px #facc15, 0 0 20px #facc15, 0 0 30px #eab308;
+        }
+        .card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card:hover { transform: translateY(-8px); }
+        .console {
+            background: #0a0a0a;
+            border: 1px solid #ca8a04;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .console-line { padding: 2px 8px; }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .banned { color: #f59e0b; font-weight: bold; }
+        /* Landing Page Styles */
+        #landing-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a00 100%);
+        }
+        .landing-content {
+            text-align: center;
+        }
+        /* Yellow Spinner */
+        .yellow-spinner {
+            border: 4px solid #3f3f46;
+            border-top: 4px solid #facc15;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white">
+    <!-- LANDING PAGE -->
+    <div id="landing-page">
+        <div class="landing-content max-w-md mx-auto px-6">
+            <div class="flex justify-center items-center mb-10">
+                <div class="w-20 h-20 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-3xl flex items-center justify-center text-5xl shadow-2xl shadow-yellow-500/50">
+                    🔥
+                </div>
+            </div>
+            <h1 class="text-5xl font-bold tracking-tighter neon-text mb-4">PAID ASSASSIN</h1>
+            <p class="text-yellow-400 text-xl mb-12">Instagram Mass Report Tool</p>
+           
+            <button onclick="connectSession()" id="connect-btn"
+                    class="w-full py-6 bg-gradient-to-r from-yellow-400 to-amber-500 text-black rounded-3xl font-bold text-2xl flex items-center justify-center gap-4 hover:scale-105 transition-transform shadow-lg shadow-yellow-500/50">
+                <i class="fas fa-plug"></i>
+                CONNECT SESSION
+            </button>
+           
+            <p class="text-zinc-500 text-sm mt-8">Connect session ids</p>
+        </div>
+    </div>
+
+    <!-- MAIN APP (hidden initially) -->
+    <div id="main-app" class="hidden">
+        <div class="max-w-7xl mx-auto p-6">
+            <!-- Header -->
+            <div class="flex justify-center items-center mb-8 border-b border-yellow-900 pb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl flex items-center justify-center text-2xl">🔥</div>
+                    <div>
+                        <h1 class="text-3xl font-bold tracking-tighter neon-text">PAID ASSASSIN</h1>
+                        <p class="text-yellow-400 text-sm">Instagram Mass Report Tool</p>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-8 space-y-8">
+                    <div class="card bg-zinc-900 border border-yellow-700 rounded-3xl p-8">
+                        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                            <i class="fas fa-bullseye text-yellow-500"></i> TARGET ACQUISITION
+                        </h2>
+                    
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">TARGET USERNAME</label>
+                                <div class="flex gap-3">
+                                    <input id="target-username" type="text" placeholder="@username or username"
+                                           class="flex-1 bg-black border border-yellow-700 focus:border-yellow-500 rounded-2xl px-6 py-4 text-lg outline-none">
+                                    <button onclick="checkUsername()" class="px-10 bg-yellow-500 hover:bg-yellow-600 text-black rounded-2xl font-semibold">
+                                        CHECK
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">REPORT TYPE</label>
+                                <select id="report-type" onchange="toggleImpersonationField()"
+                                        class="w-full bg-black border border-yellow-700 focus:border-yellow-500 rounded-2xl px-6 py-4 text-lg outline-none">
+                                    <option value="spam">Spam / Fake Account</option>
+                                    <option value="harassment">Harassment / Bullying</option>
+                                    <option value="impersonation">Impersonation</option>
+                                    <option value="violence">Violence / Threats</option>
+                                    <option value="copyright">Copyright Infringement</option>
+                                </select>
+                            </div>
+                            <div id="impersonation-field" class="hidden">
+                                <label class="block text-sm text-zinc-400 mb-2">IMPERSONATION USERNAME</label>
+                                <input id="impersonation-username" type="text" placeholder="@originalusername"
+                                       class="w-full bg-black border border-yellow-700 focus:border-yellow-500 rounded-2xl px-6 py-4 text-lg outline-none">
+                            </div>
+                            <div class="flex items-center justify-between bg-black/50 border border-yellow-800 rounded-2xl p-6">
+                                <div>
+                                    <div class="text-sm text-zinc-400">TARGET</div>
+                                    <div id="current-target" class="text-xl font-mono font-bold text-yellow-400">@unknown</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm text-zinc-400">REPORTS SENT</div>
+                                    <div id="report-count" class="text-4xl font-bold text-emerald-400">0</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <button onclick="startReporting()" id="start-btn"
+                                        class="flex-1 py-6 bg-gradient-to-r from-yellow-400 to-amber-500 text-black rounded-3xl font-bold text-xl flex items-center justify-center gap-3">
+                                    <i class="fas fa-rocket"></i> START MASS REPORTING
+                                </button>
+                                <button onclick="stopReporting()" id="stop-btn"
+                                        class="flex-1 py-6 bg-red-600/80 hover:bg-red-600 rounded-3xl font-bold text-xl hidden">
+                                    🛑 STOP REPORTING
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-8">
+                            <h3 class="text-sm font-semibold mb-2 text-yellow-400">REPORTING CONSOLE</h3>
+                            <div id="reporting-console" class="console p-4 rounded-2xl text-green-400 h-56 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Sidebar -->
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="card bg-zinc-900 border border-yellow-500/30 p-6 rounded-3xl">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                                <span class="font-semibold">CONNECTED</span>
+                            </div>
+                            <span class="text-xs font-mono text-yellow-400">LIVE</span>
+                        </div>
+                    </div>
+                    <div class="card bg-zinc-900 border border-yellow-700 p-6 rounded-3xl">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-eye"></i> USERNAME MONITOR
+                        </h3>
+                        <input id="monitor-username" type="text" placeholder="@username"
+                               class="w-full bg-black border border-yellow-700 rounded-2xl px-5 py-4 mb-3">
+                        <div class="flex gap-2 mb-4">
+                            <button onclick="checkProfile()" 
+                                    class="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-2xl font-bold text-sm">
+                                CHECK PROFILE
+                            </button>
+                            <button onclick="toggleMonitor()" id="monitor-btn"
+                                    class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-medium text-sm">
+                                START MONITOR
+                            </button>
+                        </div>
+
+                        <!-- Profile Preview Card -->
+                        <div id="profile-preview" class="hidden mb-4 p-4 bg-black/60 border border-yellow-800 rounded-2xl">
+                            <div class="flex gap-4 items-start">
+                                <img id="preview-pfp" src="" class="w-16 h-16 rounded-xl object-cover border-2 border-yellow-500"
+                                     onerror="this.src='https://via.placeholder.com/80?text=?'">
+                                <div class="flex-1 min-w-0">
+                                    <div id="preview-fullname" class="font-bold truncate"></div>
+                                    <div id="preview-user" class="text-yellow-400 text-sm"></div>
+                                    <div id="preview-status" class="text-xs font-bold mt-1"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mt-3 text-center text-xs">
+                                <div class="bg-zinc-900 rounded-xl p-2">
+                                    <div id="preview-followers" class="font-bold text-emerald-400">0</div>
+                                    <div class="text-zinc-500">Followers</div>
+                                </div>
+                                <div class="bg-zinc-900 rounded-xl p-2">
+                                    <div id="preview-following" class="font-bold text-emerald-400">0</div>
+                                    <div class="text-zinc-500">Following</div>
+                                </div>
+                                <div class="bg-zinc-900 rounded-xl p-2">
+                                    <div id="preview-posts" class="font-bold text-emerald-400">0</div>
+                                    <div class="text-zinc-500">Posts</div>
+                                </div>
+                            </div>
+                            <p id="preview-bio" class="text-zinc-400 text-xs mt-2 line-clamp-2"></p>
+                        </div>
+
+                        <div class="mt-2">
+                            <h3 class="text-sm font-semibold mb-2 text-yellow-400">MONITOR CONSOLE</h3>
+                            <div id="monitor-console" class="console p-4 rounded-2xl text-green-400 h-48 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Connected Popup -->
+    <div id="session-popup" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+        <div class="bg-zinc-900 border border-yellow-500 rounded-3xl p-10 max-w-sm text-center">
+            <div class="w-20 h-20 mx-auto bg-yellow-500/10 rounded-2xl flex items-center justify-center text-5xl mb-6">
+                ✅
+            </div>
+            <h2 class="text-3xl font-bold mb-3">Session Connected</h2>
+            <p class="text-zinc-400 mb-8">Connection established successfully.<br>Initializing main interface...</p>
+            <div class="yellow-spinner w-8 h-8 border-4 animate-spin mx-auto"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="hidden fixed bottom-6 right-6 bg-zinc-800 border border-yellow-500 text-white px-6 py-4 rounded-2xl shadow-2xl"></div>
+
+    <script>
+        let isReporting = false;
+        let reportInterval = null;
+        let monitorInterval = null;
+
+        function addLog(consoleId, message, type = 'normal') {
+            const consoleEl = document.getElementById(consoleId);
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            let className = 'console-line';
+        
+            if (type === 'success') className += ' success';
+            if (type === 'error') className += ' error';
+            if (type === 'banned') className += ' banned';
+            const log = `<div class="${className}">[${time}] ${message}</div>`;
+            consoleEl.innerHTML += log;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function toggleImpersonationField() {
+            const reportType = document.getElementById('report-type').value;
+            const impersonationField = document.getElementById('impersonation-field');
+            if (reportType === 'impersonation') {
+                impersonationField.classList.remove('hidden');
+            } else {
+                impersonationField.classList.add('hidden');
+            }
+        }
+
+        function checkUsername() {
+            const username = document.getElementById('target-username').value.trim();
+            if (!username) return showToast("Enter a username", "error");
+            
+            fetch('/check-username', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.exists) {
+                    document.getElementById('current-target').textContent = '@' + data.username;
+                    showToast(`✅ ${data.username} found!`, "success");
+                    addLog('reporting-console', `Target validated: @${data.username}`, 'success');
+                } else {
+                    showToast("❌ Username not found", "error");
+                    addLog('reporting-console', `Username @${username} not found`, 'error');
+                }
+            })
+            .catch(() => showToast("❌ Check failed", "error"));
+        }
+
+        async function startReporting() {
+            const targetInput = document.getElementById('target-username').value.trim();
+            if (!targetInput) {
+                showToast("❌ Please enter Target Username first!", "error");
+                addLog('reporting-console', 'Error: Target username is required', 'error');
+                return;
+            }
+            if (isReporting) return;
+
+            // Initial check before starting
+            addLog('reporting-console', 'Validating target before starting...', 'normal');
+            const isValid = await validateUsername(targetInput);
+            if (!isValid) {
+                showToast("❌ Cannot start: Username not found", "error");
+                addLog('reporting-console', '❌ Target not found. Reporting cancelled.', 'error');
+                return;
+            }
+
+            isReporting = true;
+            document.getElementById('start-btn').classList.add('hidden');
+            document.getElementById('stop-btn').classList.remove('hidden');
+
+            let count = 0;
+
+            reportInterval = setInterval(async () => {
+                if (!isReporting) return;
+
+                const stillExists = await validateUsername(targetInput);
+                if (!stillExists) {
+                    addLog('reporting-console', `⚠️ @${targetInput} not found anymore → Stopping reports`, 'banned');
+                    stopReporting();
+                    showToast("Target account appears to be banned / deleted", "error");
+                    return;
+                }
+
+                count += 1;
+                document.getElementById('report-count').textContent = count;
+                addLog('reporting-console', `Report #${count} sent to @${targetInput}`, 'success');
+            }, 2000);
+
+            addLog('reporting-console', `Mass reporting started on @${targetInput}...`, 'success');
+        }
+
+        async function validateUsername(username) {
+            try {
+                const res = await fetch('/check-username', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username})
+                });
+                const data = await res.json();
+                return data.exists === true;
+            } catch (e) {
+                console.error("Validation error:", e);
+                return false;
+            }
+        }
+
+        function stopReporting() {
+            if (reportInterval) clearInterval(reportInterval);
+            isReporting = false;
+            document.getElementById('start-btn').classList.remove('hidden');
+            document.getElementById('stop-btn').classList.add('hidden');
+            addLog('reporting-console', 'Reporting stopped by user.', 'error');
+        }
+
+        async function checkProfile() {
+            const username = document.getElementById('monitor-username').value.trim().replace('@', '');
+            if (!username) {
+                showToast("❌ Please enter username", "error");
+                return;
+            }
+            addLog('monitor-console', `Fetching profile for @${username}...`, 'success');
+            try {
+                const res = await fetch('/check-username', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                const data = await res.json();
+                const preview = document.getElementById('profile-preview');
+                preview.classList.remove('hidden');
+
+                if (data.exists && data.user) {
+                    document.getElementById('preview-pfp').src = data.user.profile_pic || '';
+                    document.getElementById('preview-fullname').textContent = data.user.full_name || data.user.username;
+                    document.getElementById('preview-user').textContent = `@${data.user.username}`;
+                    document.getElementById('preview-bio').textContent = data.user.biography || "No bio";
+                    document.getElementById('preview-followers').textContent = data.user.followers;
+                    document.getElementById('preview-following').textContent = data.user.following;
+                    document.getElementById('preview-posts').textContent = data.user.posts;
+                    document.getElementById('preview-status').textContent = "ACTIVE";
+                    document.getElementById('preview-status').className = "text-xs font-bold mt-1 text-emerald-400";
+                    addLog('monitor-console', `@${username} is ACTIVE`, 'success');
+                } else {
+                    document.getElementById('preview-pfp').src = '';
+                    document.getElementById('preview-fullname').textContent = username;
+                    document.getElementById('preview-user').textContent = `@${username}`;
+                    document.getElementById('preview-bio').textContent = "Account not found or banned";
+                    document.getElementById('preview-followers').textContent = "—";
+                    document.getElementById('preview-following').textContent = "—";
+                    document.getElementById('preview-posts').textContent = "—";
+                    document.getElementById('preview-status').textContent = "BANNED";
+                    document.getElementById('preview-status').className = "text-xs font-bold mt-1 text-red-400";
+                    addLog('monitor-console', `@${username} is BANNED / NOT FOUND`, 'banned');
+                }
+            } catch (e) {
+                addLog('monitor-console', 'Failed to fetch profile', 'error');
+            }
+        }
+
+        function toggleMonitor() {
+            const username = document.getElementById('monitor-username').value.trim().replace('@', '');
+            if (!username) {
+                showToast("❌ Please enter username to monitor", "error");
+                return;
+            }
+            const btn = document.getElementById('monitor-btn');
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+                btn.textContent = "START MONITOR";
+                btn.className = "flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl font-medium text-sm";
+                addLog('monitor-console', 'Monitoring stopped.', 'error');
+            } else {
+                btn.textContent = "STOP MONITOR";
+                btn.className = "flex-1 py-3 bg-red-600 hover:bg-red-700 rounded-2xl font-medium text-sm";
+                addLog('monitor-console', `Started monitoring @${username}`, 'success');
+                // First check immediately
+                checkProfile();
+                monitorInterval = setInterval(() => {
+                    fetch('/check-username', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({username})
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.exists) {
+                            addLog('monitor-console', `⚠️ @${username} → BANNED`, 'banned');
+                            document.getElementById('preview-status').textContent = "BANNED";
+                            document.getElementById('preview-status').className = "text-xs font-bold mt-1 text-red-400";
+                        } else {
+                            addLog('monitor-console', `✅ @${username} → ACTIVE`, 'success');
+                            document.getElementById('preview-status').textContent = "ACTIVE";
+                            document.getElementById('preview-status').className = "text-xs font-bold mt-1 text-emerald-400";
+                        }
+                    })
+                    .catch(() => addLog('monitor-console', 'API error', 'error'));
+                }, 3000);
+            }
+        }
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = `fixed bottom-6 right-6 px-6 py-4 rounded-2xl shadow-2xl border ${
+                type === 'success' ? 'border-yellow-500 bg-yellow-950' : 'border-red-500 bg-red-950'
+            }`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        function connectSession() {
+            const btn = document.getElementById('connect-btn');
+            btn.disabled = true;
+            btn.innerHTML = `
+                <i class="fas fa-spinner fa-spin"></i>
+                CONNECTING...
+            `;
+            setTimeout(() => {
+                document.getElementById('session-popup').classList.remove('hidden');
+               
+                setTimeout(() => {
+                    document.getElementById('landing-page').style.display = 'none';
+                    document.getElementById('main-app').classList.remove('hidden');
+                    document.getElementById('session-popup').classList.add('hidden');
+                    window.onload();
+                }, 1800);
+            }, 10000);
+        }
+
+        function initializeApp() {
+            addLog('reporting-console', 'System initialized. Ready for attack.', 'success');
+        }
+
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
