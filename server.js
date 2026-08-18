@@ -6,7 +6,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-const TOKEN = process.env.TELEGRAM_TOKEN || "8478383950:AAHRk0cBoVd3rFSB6om9etikuVe1GkJD-Ps";
+const TOKEN = process.env.TELEGRAM_TOKEN || "8743584401:AAHnZxV5jqZA_l3Y5zYMQ_IThburE2SErDY";
 const ADMIN_ID = process.env.ADMIN_ID || "7968968395";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
@@ -78,17 +78,31 @@ bot.on('message', (msg) => {
     // Admin Commands
     if (userId === ADMIN_ID) {
         if (text.startsWith('/add ')) {
-            const target = text.split(' ')[1];
-            if (!target) return bot.sendMessage(chatId, "Usage: /add <userid>");
-           
-            const upper = target.trim().toUpperCase();
-            if (!allowedUsers.includes(upper)) {
-                allowedUsers.push(upper);
-                saveUsers();
-                bot.sendMessage(chatId, `✅ User ${upper} added!`);
-            } else {
-                bot.sendMessage(chatId, `⚠️ User already exists!`);
+            const parts = text.split(' ').slice(1).filter(Boolean);
+            if (parts.length === 0) return bot.sendMessage(chatId, "Usage: /add <userid1> <userid2> ...");
+
+            const added = [];
+            const already = [];
+
+            for (const target of parts) {
+                const upper = target.trim().toUpperCase();
+                if (!upper) continue;
+                if (!allowedUsers.includes(upper)) {
+                    allowedUsers.push(upper);
+                    added.push(upper);
+                } else {
+                    already.push(upper);
+                }
             }
+
+            if (added.length > 0) saveUsers();
+
+            let msg = '';
+            if (added.length) msg += `✅ Added (${added.length}):\n${added.join('\n')}\n\n`;
+            if (already.length) msg += `⚠️ Already exists (${already.length}):\n${already.join('\n')}`;
+            if (!msg) msg = "⚠️ No valid user IDs found.";
+
+            bot.sendMessage(chatId, msg.trim());
         }
         
         if (text.startsWith('/remove ')) {
