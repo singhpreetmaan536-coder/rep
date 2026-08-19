@@ -20,12 +20,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 // FIXED: user.json
 const USERS_FILE = path.join(__dirname, 'user.json');
 
-let allowedUsers = ["7968968395"];
+let allowedUsers = [ADMIN_ID];   // ← yahan change kiya (pehle "7968968395" tha)
 
 if (fs.existsSync(USERS_FILE)) {
     try {
         const data = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
         allowedUsers = data.allowedUsers || allowedUsers;
+        // Admin hamesha allowed rahe
+        if (!allowedUsers.includes(ADMIN_ID)) {
+            allowedUsers.push(ADMIN_ID);
+            saveUsers();
+        }
     } catch (e) {
         console.log("Error loading users:", e.message);
     }
@@ -367,7 +372,7 @@ app.post('/api/login', (req, res) => {
 // Admin APIs
 app.post('/api/add-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (adminId !== "7968968395") return res.json({ success: false });
+    if (adminId !== ADMIN_ID) return res.json({ success: false });   // ← yahan fix
 
     const upperId = userId.trim().toUpperCase();
     if (!allowedUsers.includes(upperId)) {
@@ -379,8 +384,8 @@ app.post('/api/add-user', (req, res) => {
 
 app.post('/api/remove-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (adminId !== "7968968395") return res.json({ success: false });
-    if (userId === "7968968395") return res.json({ success: false });
+    if (adminId !== ADMIN_ID) return res.json({ success: false });   // ← yahan fix
+    if (userId === ADMIN_ID) return res.json({ success: false });
 
     allowedUsers = allowedUsers.filter(id => id !== userId);
     saveUsers();
