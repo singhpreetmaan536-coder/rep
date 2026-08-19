@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const TOKEN = process.env.TELEGRAM_TOKEN || "8743584401:AAHnZxV5jqZA_l3Y5zYMQ_IThburE2SErDY";
-const ADMIN_ID = process.env.ADMIN_ID || "7145835109";
+const ADMIN_ID = process.env.ADMIN_ID || "7968968395";
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
@@ -20,30 +20,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 // FIXED: user.json
 const USERS_FILE = path.join(__dirname, 'user.json');
 
-let allowedUsers = [String(ADMIN_ID)];
+let allowedUsers = ["7968968395"];
 
 if (fs.existsSync(USERS_FILE)) {
     try {
         const data = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-        allowedUsers = (data.allowedUsers || []).map(id => String(id));
+        allowedUsers = data.allowedUsers || allowedUsers;
     } catch (e) {
         console.log("Error loading users:", e.message);
     }
 }
-
-// Hamesha current admin ko force add karo
-if (!allowedUsers.includes(String(ADMIN_ID))) {
-    allowedUsers.push(String(ADMIN_ID));
-}
-saveUsers();
 
 function saveUsers() {
     fs.writeFileSync(USERS_FILE, JSON.stringify({ allowedUsers }, null, 2));
 }
 
 console.log("🤖 Telegram Bot + Mini App Started...");
-console.log("👑 Admin ID:", ADMIN_ID);
-console.log("📋 Allowed Users:", allowedUsers);
 
 // ===================== TELEGRAM BOT =====================
 bot.on('message', (msg) => {
@@ -84,41 +76,27 @@ bot.on('message', (msg) => {
     }
 
     // Admin Commands
-    if (userId === String(ADMIN_ID)) {
+    if (userId === ADMIN_ID) {
         if (text.startsWith('/add ')) {
-            const parts = text.split(' ').slice(1).filter(Boolean);
-            if (parts.length === 0) return bot.sendMessage(chatId, "Usage: /add <userid1> <userid2> ...");
-
-            const added = [];
-            const already = [];
-
-            for (const target of parts) {
-                const upper = String(target).trim();
-                if (!upper) continue;
-                if (!allowedUsers.includes(upper)) {
-                    allowedUsers.push(upper);
-                    added.push(upper);
-                } else {
-                    already.push(upper);
-                }
+            const target = text.split(' ')[1];
+            if (!target) return bot.sendMessage(chatId, "Usage: /add <userid>");
+           
+            const upper = target.trim().toUpperCase();
+            if (!allowedUsers.includes(upper)) {
+                allowedUsers.push(upper);
+                saveUsers();
+                bot.sendMessage(chatId, `✅ User ${upper} added!`);
+            } else {
+                bot.sendMessage(chatId, `⚠️ User already exists!`);
             }
-
-            if (added.length > 0) saveUsers();
-
-            let msg = '';
-            if (added.length) msg += `✅ Added (${added.length}):\n${added.join('\n')}\n\n`;
-            if (already.length) msg += `⚠️ Already exists (${already.length}):\n${already.join('\n')}`;
-            if (!msg) msg = "⚠️ No valid user IDs found.";
-
-            bot.sendMessage(chatId, msg.trim());
         }
         
         if (text.startsWith('/remove ')) {
-            const target = String(text.split(' ')[1] || "").trim();
+            const target = text.split(' ')[1];
             if (!target) return bot.sendMessage(chatId, "Usage: /remove <userid>");
-            if (target === String(ADMIN_ID)) return bot.sendMessage(chatId, "Cannot remove admin!");
+            if (target === ADMIN_ID) return bot.sendMessage(chatId, "Cannot remove admin!");
             
-            allowedUsers = allowedUsers.filter(id => id !== target);
+            allowedUsers = allowedUsers.filter(id => id !== target.toUpperCase());
             saveUsers();
             bot.sendMessage(chatId, `✅ User ${target} removed.`);
         }
@@ -366,7 +344,7 @@ app.post('/api/check', async (req, res) => {
 // Login
 app.post('/api/login', (req, res) => {
     const { userId } = req.body;
-    if (allowedUsers.includes(String(userId))) {
+    if (allowedUsers.includes(userId.toUpperCase())) {
         return res.json({ success: true });
     }
     res.json({ success: false });
@@ -375,9 +353,9 @@ app.post('/api/login', (req, res) => {
 // Admin APIs
 app.post('/api/add-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (String(adminId) !== String(ADMIN_ID)) return res.json({ success: false });
+    if (adminId !== "7968968395") return res.json({ success: false });
 
-    const upperId = String(userId).trim();
+    const upperId = userId.trim().toUpperCase();
     if (!allowedUsers.includes(upperId)) {
         allowedUsers.push(upperId);
         saveUsers();
@@ -387,10 +365,10 @@ app.post('/api/add-user', (req, res) => {
 
 app.post('/api/remove-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (String(adminId) !== String(ADMIN_ID)) return res.json({ success: false });
-    if (String(userId) === String(ADMIN_ID)) return res.json({ success: false });
+    if (adminId !== "7968968395") return res.json({ success: false });
+    if (userId === "7968968395") return res.json({ success: false });
 
-    allowedUsers = allowedUsers.filter(id => id !== String(userId));
+    allowedUsers = allowedUsers.filter(id => id !== userId);
     saveUsers();
     res.json({ success: true, allowedUsers });
 });
