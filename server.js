@@ -9,7 +9,16 @@ const fs = require('fs');
 const TOKEN = process.env.TELEGRAM_TOKEN || "8743584401:AAHnZxV5jqZA_l3Y5zYMQ_IThburE2SErDY";
 const ADMIN_ID = process.env.ADMIN_ID || "7145835109";
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+const bot = new TelegramBot(TOKEN, { 
+    polling: {
+        interval: 1000,
+        autoStart: true,
+        params: {
+            timeout: 10
+        }
+    }
+});
+
 const app = express();
 
 app.use(cors());
@@ -20,90 +29,141 @@ app.use(express.static(path.join(__dirname, 'public')));
 // FIXED: user.json
 const USERS_FILE = path.join(__dirname, 'user.json');
 
-let allowedUsers = ["7145835109"];
+let allowedUsers = [String(ADMIN_ID)];
 
 if (fs.existsSync(USERS_FILE)) {
     try {
         const data = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-        allowedUsers = data.allowedUsers || allowedUsers;
+        allowedUsers = (data.allowedUsers || []).map(id => String(id));
     } catch (e) {
         console.log("Error loading users:", e.message);
     }
 }
 
+// Always keep current admin in the list
+if (!allowedUsers.includes(String(ADMIN_ID))) {
+    allowedUsers.push(String(ADMIN_ID));
+}
+saveUsers();
+
 function saveUsers() {
-    fs.writeFileSync(USERS_FILE, JSON.stringify({ allowedUsers }, null, 2));
+    try {
+        fs.writeFileSync(USERS_FILE, JSON.stringify({ allowedUsers }, null, 2));
+    } catch (e) {
+        console.log("Error saving users:", e.message);
+    }
 }
 
 console.log("🤖 Telegram Bot + Mini App Started...");
+console.log("👑 Admin ID:", ADMIN_ID);
+console.log("📋 Allowed Users:", allowedUsers);
+
+// Error handlers for bot
+bot.on('polling_error', (error) => {
+    console.log("Polling error:", error.message);
+});
+
+bot.on('error', (error) => {
+    console.log("Bot error:", error.message);
+});
 
 // ===================== TELEGRAM BOT =====================
-bot.on('message', (msg) => {
-    const chatId = msg.chat.id;
-    const userId = String(msg.from.id);
-    const text = msg.text || '';
+bot.on('message', async (msg) => {
+    try {
+        const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
+        const text = msg.text || '';
 
-    if (text === '/start') {
-        const isAllowed = allowedUsers.includes(userId);
-        const webAppUrl = process.env.WEB_APP_URL;
+        console.log(`Message from ${userId}: ${text}`);
 
-        if (!webAppUrl) {
-            return bot.sendMessage(chatId, "❌ WEB_APP_URL not configured on Railway!");
-        }
+        if (text === '/start') {
+            const isAllowed = allowedUsers.includes(userId);
+            const webAppUrl = process.env.WEB_APP_URL;
 
-        let opts = {};
+            let opts = {};
 
-        if (isAllowed) {
-            opts = {
-                reply_markup: {
-                    inline_keyboard: [[{
-                        text: "🚀 Open Report Tool",
-                        web_app: { url: webAppUrl }
-                    }]]
-                }
-            };
-        }
+            if (isAllowed && webAppUrl) {
+                opts = {
+                    reply_markup: {
+                        inline_keyboard: [[{
+                            text: "🚀 Open Report Tool",
+                            web_app: { url: webAppUrl }
+                        }]]
+                    }
+                };
+            }
 
-        const statusText = isAllowed ? "✅ Authorized" : "❌ Not Authorized";
+            const statusText = isAllowed ? "✅ Authorized" : "❌ Not Authorized";
 
-        bot.sendMessage(chatId,
-            `👋 Welcome to *PAID ASSASSIN*\n\n` +
-            `Status: ${statusText}\n\n` +
-            `Your ID: \`${userId}\`\n\n` +
-            `${isAllowed ? 'Click button below...' : '❌ Access Denied!\nBy a subscription from @levitism'}`,
-            { parse_mode: "Markdown", ...opts }
-        );
-    }
+            let message = `👋 Welcome to *PAID ASSASSIN*\n\n`;
+            message += `Status: ${statusText}\n\n`;
+            message += `Your ID: \`${userId}\`\n\n`;
 
-    // Admin Commands
-    if (userId === ADMIN_ID) {
-        if (text.startsWith('/add ')) {
-            const target = text.split(' ')[1];
-            if (!target) return bot.sendMessage(chatId, "Usage: /add <userid>");
-           
-            const upper = target.trim().toUpperCase();
-            if (!allowedUsers.includes(upper)) {
-                allowedUsers.push(upper);
-                saveUsers();
-                bot.sendMessage(chatId, `✅ User ${upper} added!`);
+            if (!webAppUrl) {
+                message += `⚠️ WEB_APP_URL not set on Railway!\n\n`;
+            }
+
+            if (isAllowed) {
+                message += webAppUrl ? 'Click button below...' : 'Authorized but WEB_APP_URL missing.';
             } else {
-                bot.sendMessage(chatId, `⚠️ User already exists!`);
+                message += '❌ Access Denied!\nBuy a subscription from @levitism';
+            }
+
+            await bot.sendMessage(chatId, message, { 
+                parse_mode: "Markdown", 
+                ...opts 
+            });
+            return;
+        }
+
+        // Admin Commands
+        if (userId === String(ADMIN_ID)) {
+            if (text.startsWith('/add ')) {
+                const parts = text.split(' ').slice(1).filter(Boolean);
+                if (parts.length === 0) {
+                    return bot.sendMessage(chatId, "Usage: /add <userid1> <userid2> ...");
+                }
+
+                const added = [];
+                const already = [];
+
+                for (const target of parts) {
+                    const id = String(target).trim();
+                    if (!id) continue;
+                    if (!allowedUsers.includes(id)) {
+                        allowedUsers.push(id);
+                        added.push(id);
+                    } else {
+                        already.push(id);
+                    }
+                }
+
+                if (added.length > 0) saveUsers();
+
+                let msg = '';
+                if (added.length) msg += `✅ Added (${added.length}):\n${added.join('\n')}\n\n`;
+                if (already.length) msg += `⚠️ Already exists (${already.length}):\n${already.join('\n')}`;
+                if (!msg) msg = "⚠️ No valid user IDs found.";
+
+                return bot.sendMessage(chatId, msg.trim());
+            }
+
+            if (text.startsWith('/remove ')) {
+                const target = String(text.split(' ')[1] || "").trim();
+                if (!target) return bot.sendMessage(chatId, "Usage: /remove <userid>");
+                if (target === String(ADMIN_ID)) return bot.sendMessage(chatId, "Cannot remove admin!");
+
+                allowedUsers = allowedUsers.filter(id => id !== target);
+                saveUsers();
+                return bot.sendMessage(chatId, `✅ User ${target} removed.`);
+            }
+
+            if (text === '/users') {
+                return bot.sendMessage(chatId, `📋 Allowed Users:\n${allowedUsers.join('\n')}`);
             }
         }
-        
-        if (text.startsWith('/remove ')) {
-            const target = text.split(' ')[1];
-            if (!target) return bot.sendMessage(chatId, "Usage: /remove <userid>");
-            if (target === ADMIN_ID) return bot.sendMessage(chatId, "Cannot remove admin!");
-            
-            allowedUsers = allowedUsers.filter(id => id !== target.toUpperCase());
-            saveUsers();
-            bot.sendMessage(chatId, `✅ User ${target} removed.`);
-        }
-        
-        if (text === '/users') {
-            bot.sendMessage(chatId, `📋 Allowed Users:\n${allowedUsers.join('\n')}`);
-        }
+    } catch (err) {
+        console.log("Message handler error:", err.message);
     }
 });
 
@@ -116,7 +176,6 @@ app.get('/api/users', (req, res) => {
     res.json({ allowedUsers });
 });
 
-// Decode HTML entities helper
 function decodeHTMLEntities(text) {
     if (!text) return "";
     return text
@@ -128,7 +187,6 @@ function decodeHTMLEntities(text) {
         .replace(/&quot;/g, '"');
 }
 
-// Username check (upgraded with full profile + ban status)
 app.post('/check-username', async (req, res) => {
     let { username } = req.body;
 
@@ -137,10 +195,9 @@ app.post('/check-username', async (req, res) => {
     }
 
     username = username.trim().toLowerCase().replace('@', '');
-
     console.log(`Checking: ${username}`);
 
-    // Method 1 - Official web_profile_info API
+    // Method 1
     try {
         const headers = {
             "x-ig-app-id": "936619743392459",
@@ -175,7 +232,7 @@ app.post('/check-username', async (req, res) => {
         console.log("Method 1 error:", e.message);
     }
 
-    // Method 2 - Public page scrape
+    // Method 2
     try {
         const pageRes = await axios.get(`https://www.instagram.com/${username}/`, {
             headers: {
@@ -231,7 +288,7 @@ app.post('/check-username', async (req, res) => {
         console.log("Method 2 error:", e.message);
     }
 
-    // Method 3 - Original bloks search (fallback)
+    // Method 3
     try {
         const device = uuidv4();
         const family = uuidv4();
@@ -272,13 +329,11 @@ app.post('/check-username', async (req, res) => {
     return res.json({ exists: false, status: "BANNED" });
 });
 
-// Alias endpoint (same logic as /check-username)
 app.post('/api/check', async (req, res) => {
     let { username } = req.body;
     if (!username) return res.json({ exists: false, status: "BANNED" });
     username = username.trim().toLowerCase().replace('@', '');
 
-    // Method 1
     try {
         const headers = {
             "x-ig-app-id": "936619743392459",
@@ -309,7 +364,6 @@ app.post('/api/check', async (req, res) => {
         }
     } catch (e) {}
 
-    // Method 2
     try {
         const pageRes = await axios.get(`https://www.instagram.com/${username}/`, {
             headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
@@ -341,21 +395,19 @@ app.post('/api/check', async (req, res) => {
     return res.json({ exists: false, status: "BANNED" });
 });
 
-// Login
 app.post('/api/login', (req, res) => {
     const { userId } = req.body;
-    if (allowedUsers.includes(userId.toUpperCase())) {
+    if (allowedUsers.includes(String(userId))) {
         return res.json({ success: true });
     }
     res.json({ success: false });
 });
 
-// Admin APIs
 app.post('/api/add-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (adminId !== "7968968395") return res.json({ success: false });
+    if (String(adminId) !== String(ADMIN_ID)) return res.json({ success: false });
 
-    const upperId = userId.trim().toUpperCase();
+    const upperId = String(userId).trim();
     if (!allowedUsers.includes(upperId)) {
         allowedUsers.push(upperId);
         saveUsers();
@@ -365,10 +417,10 @@ app.post('/api/add-user', (req, res) => {
 
 app.post('/api/remove-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (adminId !== "7968968395") return res.json({ success: false });
-    if (userId === "7968968395") return res.json({ success: false });
+    if (String(adminId) !== String(ADMIN_ID)) return res.json({ success: false });
+    if (String(userId) === String(ADMIN_ID)) return res.json({ success: false });
 
-    allowedUsers = allowedUsers.filter(id => id !== userId);
+    allowedUsers = allowedUsers.filter(id => id !== String(userId));
     saveUsers();
     res.json({ success: true, allowedUsers });
 });
