@@ -20,27 +20,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 // FIXED: user.json
 const USERS_FILE = path.join(__dirname, 'user.json');
 
-let allowedUsers = [ADMIN_ID];   // ← yahan change kiya (pehle "7968968395" tha)
+let allowedUsers = [String(ADMIN_ID)];
 
 if (fs.existsSync(USERS_FILE)) {
     try {
         const data = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-        allowedUsers = data.allowedUsers || allowedUsers;
-        // Admin hamesha allowed rahe
-        if (!allowedUsers.includes(ADMIN_ID)) {
-            allowedUsers.push(ADMIN_ID);
-            saveUsers();
-        }
+        allowedUsers = (data.allowedUsers || []).map(id => String(id));
     } catch (e) {
         console.log("Error loading users:", e.message);
     }
 }
+
+// Hamesha current admin ko force add karo
+if (!allowedUsers.includes(String(ADMIN_ID))) {
+    allowedUsers.push(String(ADMIN_ID));
+}
+saveUsers();
 
 function saveUsers() {
     fs.writeFileSync(USERS_FILE, JSON.stringify({ allowedUsers }, null, 2));
 }
 
 console.log("🤖 Telegram Bot + Mini App Started...");
+console.log("👑 Admin ID:", ADMIN_ID);
+console.log("📋 Allowed Users:", allowedUsers);
 
 // ===================== TELEGRAM BOT =====================
 bot.on('message', (msg) => {
@@ -81,7 +84,7 @@ bot.on('message', (msg) => {
     }
 
     // Admin Commands
-    if (userId === ADMIN_ID) {
+    if (userId === String(ADMIN_ID)) {
         if (text.startsWith('/add ')) {
             const parts = text.split(' ').slice(1).filter(Boolean);
             if (parts.length === 0) return bot.sendMessage(chatId, "Usage: /add <userid1> <userid2> ...");
@@ -90,7 +93,7 @@ bot.on('message', (msg) => {
             const already = [];
 
             for (const target of parts) {
-                const upper = target.trim().toUpperCase();
+                const upper = String(target).trim();
                 if (!upper) continue;
                 if (!allowedUsers.includes(upper)) {
                     allowedUsers.push(upper);
@@ -111,11 +114,11 @@ bot.on('message', (msg) => {
         }
         
         if (text.startsWith('/remove ')) {
-            const target = text.split(' ')[1];
+            const target = String(text.split(' ')[1] || "").trim();
             if (!target) return bot.sendMessage(chatId, "Usage: /remove <userid>");
-            if (target === ADMIN_ID) return bot.sendMessage(chatId, "Cannot remove admin!");
+            if (target === String(ADMIN_ID)) return bot.sendMessage(chatId, "Cannot remove admin!");
             
-            allowedUsers = allowedUsers.filter(id => id !== target.toUpperCase());
+            allowedUsers = allowedUsers.filter(id => id !== target);
             saveUsers();
             bot.sendMessage(chatId, `✅ User ${target} removed.`);
         }
@@ -363,7 +366,7 @@ app.post('/api/check', async (req, res) => {
 // Login
 app.post('/api/login', (req, res) => {
     const { userId } = req.body;
-    if (allowedUsers.includes(userId.toUpperCase())) {
+    if (allowedUsers.includes(String(userId))) {
         return res.json({ success: true });
     }
     res.json({ success: false });
@@ -372,9 +375,9 @@ app.post('/api/login', (req, res) => {
 // Admin APIs
 app.post('/api/add-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (adminId !== ADMIN_ID) return res.json({ success: false });   // ← yahan fix
+    if (String(adminId) !== String(ADMIN_ID)) return res.json({ success: false });
 
-    const upperId = userId.trim().toUpperCase();
+    const upperId = String(userId).trim();
     if (!allowedUsers.includes(upperId)) {
         allowedUsers.push(upperId);
         saveUsers();
@@ -384,10 +387,10 @@ app.post('/api/add-user', (req, res) => {
 
 app.post('/api/remove-user', (req, res) => {
     const { userId, adminId } = req.body;
-    if (adminId !== ADMIN_ID) return res.json({ success: false });   // ← yahan fix
-    if (userId === ADMIN_ID) return res.json({ success: false });
+    if (String(adminId) !== String(ADMIN_ID)) return res.json({ success: false });
+    if (String(userId) === String(ADMIN_ID)) return res.json({ success: false });
 
-    allowedUsers = allowedUsers.filter(id => id !== userId);
+    allowedUsers = allowedUsers.filter(id => id !== String(userId));
     saveUsers();
     res.json({ success: true, allowedUsers });
 });
